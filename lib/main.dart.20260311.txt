@@ -1,0 +1,590 @@
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+// ignore_for_file: avoid_print
+
+import 'dart:async';
+import 'dart:io';
+//import 'package:path/path.dart';
+//import 'package:sqflite/sqflite.dart';
+
+void main() async {
+  runApp(const MyApp());
+}
+
+class PlayerInfo {
+  String pName = "";
+  String pIpAddr = "";
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+
+  // this was a StatelessWidget with a Build override
+  // changed to StatefulWidget with createState override
+  // and moved Build to override of _MyAppState
+}
+
+// _MyAppState was a ChangeNotifier, created this class so that
+// the original could be changed to State<>
+/*
+class _MyAppStateNotifier extends ChangeNotifier {
+  late _MyAppState st;
+
+  _MyAppStateNotifier({required this.st, }) {
+    print("MyAppStateNotifier ctor");
+  }
+
+  // notifyListeners can't be called externally, otherwise would have done that
+  void ping() {
+    notifyListeners();
+  }
+}
+*/
+
+class _MyAppState extends State<MyApp> {
+//  late String dbFilepath;
+//  late Future<Database> favoritesDb; // db used for persistence
+//  late _MyAppStateNotifier cn;
+
+  _MyAppState() {
+    print("MyAppState ctor - enter");
+  //  cn = _MyAppStateNotifier(st: this);
+    print("MyAppState ctor - exit");
+  }
+
+  @override
+  void initState() {
+    print("MyAppState.initState - enter");
+    super.initState();
+    init();
+    print("MyAppState.initState - exit");
+  }
+
+  void init() async {
+    print("MyAppState.init - enter");
+    // Avoid errors caused by flutter upgrade.
+    // Importing 'package:flutter/widgets.dart' is required.
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Using the `join` function from the
+    // `path` package is best practice to ensure the path is correctly
+    // constructed for each platform.
+//    const String kDbFilename = "squeeze_rebooter.db";
+//    dbFilepath = join(await getDatabasesPath(), kDbFilename);
+
+    // // Open the database and store the reference.
+    // favoritesDb = openDatabase(
+    //   // Set the path to the database
+    //   dbFilepath,
+    //   // When the database is first created, create a table to store saved word combinations.
+    //   onCreate: (db, version) {
+    //     // Run the CREATE TABLE statement on the database.
+    //     return db.execute(
+    //       'CREATE TABLE $kDbTableName (id TEXT PRIMARY KEY, first TEXT, second TEXT)',
+    //     );
+    //   },
+    //   // Set the version. This executes the onCreate function and provides a
+    //   // path to perform database upgrades and downgrades.
+    //   version: 1,
+    // );
+
+    print("MyAppState.init - exit");
+  }
+
+  // void getNext() {
+  //   history.insert(0, current);
+  //   var animatedList = historyListKey?.currentState as AnimatedListState?;
+  //   animatedList?.insertItem(0);
+  //   current = WordPair.random();
+  //   cn.ping();
+  // }
+
+  // void toggleFavorite([WordPair? pair]) async {
+  //   pair = pair ?? current;
+  //   if (await isFavoriteAsync(pair)) {
+  //     favoritesCache.remove(pair);
+  //     await _deleteFav(pair);
+  //   } else {
+  //     favoritesCache.add(pair);
+  //     await _insertFav(pair);
+  //     // await insertFav(ComboWord.fromPair(pair));
+  //     // await insertFav(ComboWord(
+  //     //   mFirst: pair.first, 
+  //     //   mSecond: pair.second,
+  //     // ));
+  //   }
+  //   cn.ping();
+  // }
+
+  // void removeFavorite(WordPair pr) async {
+  //   if (await isFavoriteAsync(pr)) {
+  //     favoritesCache.remove(pr);
+  //     await _deleteFav(pr);
+  //     cn.ping();
+  //   }
+  // }
+
+  // Future<bool> isFavoriteAsync(WordPair pr) async {
+  //   // Get a reference to the database.
+  //   final db = await favoritesDb;
+
+  //   final List<Map<String, dynamic>> maps = await db.query(
+  //     kDbTableName, 
+  //     // Use a `where` clause to delete a specific record.
+  //     where: 'id = ?',
+  //     // Pass id as a whereArg to prevent SQL injection.
+  //     whereArgs: [pr.asLowerCase],
+  //   );
+
+  //   if (maps.isNotEmpty) {
+  //     assert(isFavorite(pr));
+  //     return true;
+  //   } else {
+  //     assert(!isFavorite(pr));
+  //     return false;
+  //   }
+  // }
+
+  // bool isFavorite(WordPair pr) {
+  //   if (favoritesCache.contains(pr)) {
+  //     return true;
+  //   } else {
+  //     return false;
+  //   }
+  // }
+
+  // // Define a function that inserts items into the database
+  // Future<void> _insertFav(WordPair pr) async {
+  //   // Get a reference to the database.
+  //   final db = await favoritesDb;
+
+  //   // Insert the item into the correct table. You might also specify the
+  //   // `conflictAlgorithm` to use in case the same item is inserted twice.
+  //   //
+  //   // In this case, ignore the new data.
+  //   await db.insert(
+  //     kDbTableName,
+  //     ComboWord.fromPair(pr).toMap(),
+  //     conflictAlgorithm: ConflictAlgorithm.ignore,
+  //   );
+  // }
+
+  // Future<void> _deleteFav(WordPair pr) async {
+  //   // Get a reference to the database.
+  //   final db = await favoritesDb;
+
+  //   // Remove the item from the database.
+  //   await db.delete(
+  //     kDbTableName,
+  //     // Use a `where` clause to delete a specific item.
+  //     where: 'id = ?',
+  //     // Pass the item's id as a whereArg to prevent SQL injection.
+  //     whereArgs: [pr.asLowerCase],
+  //   );
+  // }
+
+  // // for futureBuilder see networking fetch-data example
+  // @override
+  // Widget build(BuildContext context) {
+  //   return ChangeNotifierProvider(
+  //     create: (context) => cn,
+  //     child: MaterialApp(
+  //       title: 'Codelab Namer App',
+  //       theme: ThemeData(
+  //         useMaterial3: true,
+  //         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+  //       ),
+  //       home: MyHomePage(),
+  //     ),
+  //   );
+  // }
+
+  // This widget is the root of your application.
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Squeezebox Touch Rebooter',
+      theme: ThemeData(
+        // This is the theme of your application.
+        //
+        // Try running your application with "flutter run". You'll see the
+        // application has a blue toolbar. Then, without quitting the app, try
+        // changing the primarySwatch below to Colors.green and then invoke
+        // "hot reload" (press "r" in the console where you ran "flutter run",
+        // or simply save your changes to "hot reload" in a Flutter IDE).
+        // Notice that the counter didn't reset back to zero; the application
+        // is not restarted.
+        /*
+        primaryColor: Colors.grey,
+        primarySwatch: Colors.grey,
+        primaryColorDark: Colors.black,
+        */
+        brightness: Brightness.dark,
+        useMaterial3: true,
+      ),
+      home: const MyHomePage(title: 'Squeezebox Touch Rebooter'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final List<PlayerInfo> playerInfo = List.empty(growable: true);
+  String serverIpAddr = "192.168.1.120";
+  String playerIpAddr = "";
+
+  // Create a text controller and use it to retrieve the current value
+  // of the TextField.
+  final ipAddrController = TextEditingController();
+
+  String log = "";
+  final logViewController = TextEditingController();
+
+  _MyHomePageState() {
+    ipAddrController.text = serverIpAddr;
+    logViewController.text = log;
+    _serverQuery();
+  }
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    ipAddrController.dispose();
+    logViewController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This method is rerun every time setState is called, for instance as done
+    // by the _incrementCounter method above.
+    //
+    // The Flutter framework has been optimized to make rerunning build methods
+    // fast, so that you can just rebuild anything that needs updating rather
+    // than having to individually change instances of widgets.
+    return Scaffold(
+      appBar: AppBar(
+        // Here we take the value from the MyHomePage object that was created by
+        // the App.build method, and use it to set our appbar title.
+        title: Text(widget.title),
+      ),
+      body: Container(
+        // Center is a layout widget. It takes a single child and positions it
+        // in the middle of the parent.
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child:
+        Column(
+          // Column is also a layout widget. It takes a list of children and
+          // arranges them vertically. By default, it sizes itself to fit its
+          // children horizontally, and tries to be as tall as its parent.
+          //
+          // Invoke "debug painting" (press "p" in the console, choose the
+          // "Toggle Debug Paint" action from the Flutter Inspector in Android
+          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
+          // to see the wireframe for each widget.
+          //
+          // Column has various properties to control how it sizes itself and
+          // how it positions its children. Here we use mainAxisAlignment to
+          // center the children vertically; the main axis here is the vertical
+          // axis because Columns are vertical (the cross axis would be
+          // horizontal).
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Lyrion Music Server IP address:',
+              textAlign: TextAlign.left,
+              textScaleFactor: 1.5,
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child:
+                    TextField(
+                      controller: ipAddrController,
+                      maxLength: 15,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    serverIpAddr = ipAddrController.text;
+                    _serverQuery();
+                  },
+                  child: const Text(
+                    "Query",
+                    textScaleFactor: 1.25,
+                  ),
+                ),
+              ]
+            ),
+
+            const SizedBox(height: 30),
+
+            if (playerInfo.isNotEmpty)
+              const Text(
+                'Player Rebooters:',
+                textAlign: TextAlign.left,
+                textScaleFactor: 1.5,
+              ),
+
+            // add player reboot button to UI
+            for (PlayerInfo curPlayerItem in playerInfo)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    child: 
+                      ElevatedButton(
+                        onPressed: () {
+                          playerIpAddr = curPlayerItem.pIpAddr;
+                          _rebootPlayer();
+                        },
+                        child: Text(
+                          "Reboot " + curPlayerItem.pName,
+                          textScaleFactor: 1.25,
+                        ),
+                      )
+                  )
+                ]
+              )
+              ,
+
+            Flexible(
+              child: 
+                TextField(
+                  controller: logViewController,
+                  readOnly: true, 
+                  textAlign: TextAlign.left,
+                  maxLines: 30,
+                ),
+            ),
+            // const Spacer(flex: 1),
+          ],
+        ),
+      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  late Socket socket;
+  bool connectionIsOpen = false;
+
+  void _serverQuery() async {
+    if (connectionIsOpen) {
+      append('request to connect to LMS $serverIpAddr declined due to open connection');
+      return;
+    }
+
+    log = ""; // reset log when button is pressed
+    playerInfo.clear();
+    var addr = InternetAddress(serverIpAddr);
+    Socket.connect(addr, 9090).then((Socket sock) {
+      socket = sock;
+      append("connected to LMS ${socket.remoteAddress.address}:${socket.remotePort}");
+      connectionIsOpen = true;
+      socket.listen(serverDataHandler, 
+        onError: socketErrorHandler, 
+        onDone: socketDoneHandler, 
+        cancelOnError: true);
+      socket.write('player count ?\n');
+    }).catchError((AsyncError e) {
+        append("Unable to connect to LMS, error caught: $e");
+    });
+  }
+
+  int playerCount = 0;
+  int currentPlayerIdx = -1;
+  String playerModelQueryStr = "";
+  String playerNameQueryStr = "";
+  String playerIpQueryStr = "";
+  String currentPlayerName = "";
+  
+  void serverDataHandler(data) {
+    if (!connectionIsOpen) {
+      return;
+    }
+
+    /*
+        player count ?
+        (iterate over returned count: player count x)
+        player model idx ?
+        (player model idx fab4)
+        player name idx ?
+        (player name idx foo)
+        player ip idx ?
+        (player ip idx addr:port)
+    */
+    var txt = String.fromCharCodes(data).trim();
+    if (txt.startsWith("player count ")) {
+      txt = txt.substring(13);
+      playerCount = int.parse(txt);
+      currentPlayerIdx = 0;
+      serverQueryNextPlayer();
+    }
+    else if (txt.startsWith(playerModelQueryStr)) {
+      // append("[server] $txt");
+      if (txt.contains(" fab4")) {
+        socket.write(playerNameQueryStr + " ?\n");
+      }
+      else {
+        serverQueryNextPlayer();
+      }
+    }
+    else if (txt.startsWith(playerNameQueryStr)) {
+      txt = unescapeText(txt);
+      currentPlayerName = txt.substring(playerNameQueryStr.length + 1);
+      socket.write(playerIpQueryStr + " ?\n");
+    }
+    else if (txt.startsWith(playerIpQueryStr)) {
+      PlayerInfo inf = PlayerInfo();
+      txt = unescapeText(txt);
+      int pos = txt.indexOf(':');
+      if (pos == -1) {
+        inf.pIpAddr = txt.substring(playerIpQueryStr.length + 1);
+      }
+      else {
+        inf.pIpAddr = txt.substring(playerIpQueryStr.length + 1, pos);
+      }
+      inf.pName = currentPlayerName;
+      playerInfo.add(inf);
+
+      serverQueryNextPlayer();
+    }
+    else {
+      append("[unhandled server response] $txt");
+    }
+  }
+
+  String unescapeText(String txt) {
+      txt = txt.replaceAll("%3A", ":");
+      txt = txt.replaceAll("%20", " ");
+      return txt;
+  }
+
+  void serverQueryNextPlayer() {
+    if (currentPlayerIdx < playerCount) {
+      playerModelQueryStr = "player model $currentPlayerIdx";
+      playerNameQueryStr = "player name $currentPlayerIdx";
+      playerIpQueryStr = "player ip $currentPlayerIdx";
+      socket.write(playerModelQueryStr + " ?\n");
+      currentPlayerIdx++;
+    }
+    else {
+      socket.write('exit\n');
+      connectionIsOpen = false;
+      socket.close();
+      append("server connection closed");
+      setState(() { });
+    }
+  }
+
+  void _rebootPlayer() async {
+    if (connectionIsOpen) {
+      append('request to reboot $playerIpAddr declined due to open connection');
+      return;
+    }
+
+    log = ""; // reset log when button is pressed
+    append('attempting to reboot $playerIpAddr');
+    var addr = InternetAddress(playerIpAddr);
+    Socket.connect(addr, 23).then((Socket sock) {
+      socket = sock;
+      append("connected to ${socket.remoteAddress.address}:${socket.remotePort}");
+      connectionIsOpen = true;
+      socket.listen(playerDataHandler, 
+        onError: socketErrorHandler, 
+        onDone: socketDoneHandler, 
+        cancelOnError: true);
+    }).catchError((AsyncError e) {
+        append("Unable to connect to player, error caught: $e");
+    });
+  }
+
+  void playerDataHandler(data) {
+    if (!connectionIsOpen) {
+      return;
+    }
+
+    Uint8List telnetNegotiation = Uint8List.fromList([255, 253, 1, 255, 253, 31, 255, 251, 1, 255, 251, 3]);
+    var txt = String.fromCharCodes(data).trim();
+    if (data.length == telnetNegotiation.length && txt == String.fromCharCodes(telnetNegotiation)) {
+      // telnet negotiation settings in initial response, 
+      // sometimes with login prompt, sometimes alone
+      append("player sent telnet negotiation");
+    }
+    else if (txt.endsWith("SqueezeboxTouch login:")) {
+      if (txt.length > 25) {
+        txt = txt.substring(15);
+        append("[player responded (with telnet negotiation)] $txt");
+      } 
+      else {
+        append("[player responded] $txt");
+      }
+      // login name: root
+      socket.write('root\n');
+    }
+    else if (txt.endsWith("Password:")) {
+      append("[player responded] $txt");
+      // login password: 1234
+      socket.write('1234\n');
+    }
+    else if (txt.contains("Enjoy!")) {
+      append("logged in, sending reboot command");
+      // command: reboot
+      socket.write('reboot\n');
+      // socket.write('exit\n'); // for debugging
+      sleep(const Duration(milliseconds: 500)); // reboot fails if socket is closed too quickly
+      connectionIsOpen = false;
+      append("closing player connection");
+      socket.close();
+    }
+    else if (
+      txt == "root" || 
+      txt == "") {
+      // don't log anything
+    }
+    else {
+      append("[unhandled player response] $txt");
+    }
+  }
+
+  void socketErrorHandler(error, StackTrace trace) {
+    if (!connectionIsOpen) {
+      return;
+    }
+
+    append("[error] $error");
+  }
+
+  void socketDoneHandler() {
+    connectionIsOpen = false;
+    socket.destroy();
+  }
+
+  void append(text) {
+    log += "\n$text";
+    logViewController.text = log;
+  }
+}
