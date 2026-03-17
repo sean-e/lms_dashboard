@@ -1,44 +1,10 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'logger.dart';
+import 'lmsappprefs.dart';
+import 'playerrebooter.dart';
+import 'servercomm.dart';
+import 'lmsplayer.dart';
 
-
-class LmsAppPrefs {
-  String serverIpAddr = "";
-  int serverIpAddrPort = 0;
-  String playerTelnetUserName = "";
-  String playerTelnetPassword = "";
-
-  Future<void> init() async {
-    await Hive.initFlutter();
-    _initialPrefs = await Hive.openBox("dashboard_prefs");
-  }
-
-  void loadSettings() {
-    // do not set a default ip address since it will most likely be wrong and 
-    // will cause an error to appear on first launch after install/update
-    serverIpAddr = _initialPrefs.get("server_ip_addr") ?? "";
-
-    serverIpAddrPort = _initialPrefs.get("server_ip_addr_port") ?? 9090;
-    playerTelnetUserName = _initialPrefs.get("player_telnet_username") ?? "root";
-    playerTelnetPassword = _initialPrefs.get("player_telnet_password") ?? "1234";
-    _initialPrefs.close();
-  }
-
-  void storeSettings() async {
-    final Box prefs = await Hive.openBox("dashboard_prefs");
-    prefs.put("server_ip_addr", serverIpAddr);
-    prefs.put("server_ip_addr_port", serverIpAddrPort);
-    prefs.put("player_telnet_username", playerTelnetUserName);
-    prefs.put("player_telnet_password", playerTelnetPassword);
-    prefs.close();
-  }
-  
-  late final Box _initialPrefs;
-}
-
-LmsAppPrefs appPrefs = LmsAppPrefs();
 
 void main() async {
   // await can't happen in _DashboardAppState.init because it doesn't complete 
@@ -99,33 +65,25 @@ class DashboardHomePage extends StatefulWidget {
   State<DashboardHomePage> createState() => _DashboardHomePageState();
 }
 
-class PlayerInfo {
-  String ipAddr = "";
-  String playerId = "";
-  String deviceName = "";
-  String wifiSignalStrength = "";
-  int powerState = 0;
-  bool supportsTelnet = false;
-}
-
 class _DashboardHomePageState extends State<DashboardHomePage> {
-  final List<PlayerInfo> _playerInfo = List.empty(growable: true);
-  PlayerInfo _selectedPlayer = PlayerInfo();
-  String _logTxt = "Not connected";
+  final ServerPlayerQuery server = ServerPlayerQuery();
+  final ServerPlayerControl playerControl = ServerPlayerControl();
+  final PlayerRebooter rebooter = PlayerRebooter();
 
-  // Create a text controller and use it to retrieve the current value
-  // of the TextField.
   final _ipAddrController = TextEditingController();
   final _ipAddrPortController = TextEditingController();
-  final _logViewController = TextEditingController();
 
   _DashboardHomePageState() {
+    logger.init();
     appPrefs.loadSettings();
     _ipAddrController.text = appPrefs.serverIpAddr;
     _ipAddrPortController.text = "${appPrefs.serverIpAddrPort}";
-    _logViewController.text = _logTxt;
 
-    _serverQuery();
+    playerControl.setUpdateCallback(update);
+    playerControl.setRequeryCallback(beginPlayerQuery);
+
+    server.setUpdateCallback(update);
+    beginPlayerQuery();
   }
 
   @override
@@ -133,7 +91,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
     // Clean up the controller when the widget is disposed.
     _ipAddrController.dispose();
     _ipAddrPortController.dispose();
-    _logViewController.dispose();
+    logger.dispose();
     super.dispose();
   }
 
@@ -151,7 +109,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
       //   // the App.build method, and use it to set our appbar title.
       //   //title: Text(widget.title),
       // ),
-      body: RefreshIndicator(onRefresh: _serverQuery, child:
+      body: RefreshIndicator(onRefresh: beginPlayerQuery, child:
       Container(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
@@ -199,14 +157,14 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
                       textInputAction: TextInputAction.done,
                       keyboardType: TextInputType.number,
                       onSubmitted: (String value) {
-                        _submitQuery();
+                        _submitServerPlayerQuery();
                       },
                     ),
                 ),
                 const SizedBox(width: 10),
                 OutlinedButton(
-                  onPressed: () {
-                    _submitQuery();
+                  onPressed: server.isConnectionOpen() ? null : () {
+                    _submitServerPlayerQuery();
                   },
                   child: const Text(
                     "Refresh",
@@ -217,7 +175,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
 
             const SizedBox(height: 25),
 
-            if (_playerInfo.isEmpty)
+            if (players.isEmpty)
               const Text(
                 "No players",
                 textAlign: TextAlign.left,
@@ -225,7 +183,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
               ),
 
             // add row for each player 
-            for (PlayerInfo curPlayerItem in _playerInfo)
+            for (LmsPlayer currentPlayer in players)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -233,26 +191,25 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
                     flex: 13,
                     child:
                       Text(
-                        curPlayerItem.deviceName,
+                        currentPlayer.deviceName,
                         textAlign: TextAlign.left,
                         textScaler: const TextScaler.linear(1.1),
                         overflow: TextOverflow.fade,
                       ),
                   ),
-                  if (curPlayerItem.wifiSignalStrength.isNotEmpty && curPlayerItem.wifiSignalStrength != "0")
+                  if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
                     const SizedBox(),
-                  if (curPlayerItem.wifiSignalStrength.isNotEmpty && curPlayerItem.wifiSignalStrength != "0")
+                  if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
                    Text(
-                    "${curPlayerItem.wifiSignalStrength}%",
+                    "${currentPlayer.wifiSignalStrength}%",
                   ),
                   const Expanded(
                     child:
                     SizedBox(),
                   ),
                   OutlinedButton(
-                    onPressed: curPlayerItem.supportsTelnet == false ? null : () {
-                      _selectedPlayer = curPlayerItem;
-                      _rebootPlayer();
+                    onPressed: rebooter.isConnectionOpen() || currentPlayer.supportsTelnet == false ? null : () {
+                      rebooter.reboot(currentPlayer);
                     },
                     child: 
                     const Text(
@@ -261,15 +218,15 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
                   ),
                   const SizedBox(width:10),
                   OutlinedButton(
-                    onPressed: curPlayerItem.powerState != 0 && curPlayerItem.powerState != 1 ? null : () {
-                      _selectedPlayer = curPlayerItem;
-                      _togglePlayerPower();
-                      curPlayerItem.powerState = -1;
-                      setState(() {});
+                    onPressed: playerControl.isConnectionOpen() || (currentPlayer.powerState != 0 && currentPlayer.powerState != 1) ? null : () {
+                      playerControl.togglePlayerPower(currentPlayer);
+                      currentPlayer.powerState = -1;
+                      update(); // just to update text on the button because power state has changed...
                     },
                     child: 
                     Text(
-                      switch (curPlayerItem.powerState) {
+                      switch (currentPlayer.powerState) {
+                        // spaces added just to reduce spacing shift when text changes
                         0 => "Off",
                         1 => "On ",
                         _ => "...  ",
@@ -279,7 +236,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
                 ]
               ),
               TextField(
-                controller: _logViewController,
+                controller: logger.getController(),
                 readOnly: true, 
                 textAlign: TextAlign.left,
                 maxLines: null,
@@ -291,379 +248,20 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
     ));
   }
 
-  void _submitQuery() {
+  void _submitServerPlayerQuery() {
     appPrefs.serverIpAddr = _ipAddrController.text;
     appPrefs.serverIpAddrPort = int.parse(_ipAddrPortController.text);
 
-    _serverQuery();
+    beginPlayerQuery();
 
     appPrefs.storeSettings();
   }
 
-  late Socket _serverSocket;
-  late Socket _playerSocket;
-  bool _serverConnectionIsOpen = false;
-  bool _playerConnectionIsOpen = false;
-
-  int _playerCount = 0;
-  int _queryPlayerIdx = -1;
-  final String _playerCountQueryStr = "player count ";
-  String _playerConnectedQueryStr = "";
-  String _playerModelQueryStr = "";
-  String _playerNameQueryStr = "";
-  String _playerIpQueryStr = "";
-  String _playerIdQueryStr = "";
-  String _playerWifiQueryStr = "";
-  String _playerPowerQueryStr = "";
-  PlayerInfo _currentQueryPlayer = PlayerInfo();
-
-  Future<void> _serverQuery() async {
-    if (_serverConnectionIsOpen) {
-      _logActivity("request to connect to LMS ${appPrefs.serverIpAddr} declined due to open connection");
-      return;
-    }
-
-    if (appPrefs.serverIpAddr.isEmpty || appPrefs.serverIpAddrPort == 0) {
-      return;
-    }
-
-    _logTxt = "Activity:"; // reset _logTxt
-    _logActivity("opening connection to ${appPrefs.serverIpAddr}:${appPrefs.serverIpAddrPort}");
-    _playerInfo.clear();
-    InternetAddress addr;
-    try {
-      addr = InternetAddress(appPrefs.serverIpAddr);
-    }
-    catch(e) {
-      _logActivity("$e");
-      return;
-    }
-
-    Duration timeoutVal = const Duration(seconds:10);
-    Socket.connect(addr, appPrefs.serverIpAddrPort, timeout:timeoutVal).then((Socket sock) {
-      _serverSocket = sock;
-      _logActivity("connected to LMS, begin server query");
-      _serverConnectionIsOpen = true;
-      _serverSocket.listen(_serverQueryDataHandler, 
-        onError: _serverSocketErrorHandler, 
-        onDone: _serverSocketDoneHandler, 
-        cancelOnError: true);
-      _serverSocket.write("$_playerCountQueryStr?\n");
-    }).catchError((e) {
-      _logActivity("Unable to connect to LMS, error caught: $e");
-      setState(() {});
-    });
+  void update() {
+    setState(() {});
   }
 
-  void _serverQueryDataHandler(Uint8List data) {
-    if (!_serverConnectionIsOpen) {
-      return;
-    }
-
-    var txt = String.fromCharCodes(data).trim();
-    txt = _unescapeText(txt);
-    if (txt.startsWith(_playerCountQueryStr)) {
-      _playerCount = int.parse(txt.substring(_playerCountQueryStr.length));
-      _queryPlayerIdx = 0;
-      _serverQueryNextPlayer();
-    }
-    else if (txt.startsWith(_playerIdQueryStr)) {
-      _currentQueryPlayer.playerId = txt.substring(_playerIdQueryStr.length);
-
-      _playerConnectedQueryStr = "${_currentQueryPlayer.playerId} connected ";
-      _playerWifiQueryStr = "${_currentQueryPlayer.playerId} signalstrength ";
-      _playerPowerQueryStr = "${_currentQueryPlayer.playerId} power ";
-
-      _serverSocket.write("$_playerConnectedQueryStr?\n");
-    }
-    else if (txt.startsWith(_playerConnectedQueryStr)) {
-      int connected = int.parse(txt.substring(_playerConnectedQueryStr.length));
-      if (connected == 1) {
-        _serverSocket.write("$_playerModelQueryStr?\n");
-      }
-      else {
-        // don't display disconnected players
-        _serverQueryNextPlayer();
-      }
-    }
-    else if (txt.startsWith(_playerModelQueryStr)) {
-      if (txt.contains(" fab4")) {
-        _currentQueryPlayer.supportsTelnet = true;
-      }
-      else {
-        _currentQueryPlayer.supportsTelnet = false;
-      }
-      _serverSocket.write("$_playerNameQueryStr?\n");
-    }
-    else if (txt.startsWith(_playerNameQueryStr)) {
-      _currentQueryPlayer.deviceName = txt.substring(_playerNameQueryStr.length);
-      _serverSocket.write("$_playerIpQueryStr?\n");
-    }
-    else if (txt.startsWith(_playerIpQueryStr)) {
-      int pos = txt.indexOf(':');
-      if (pos == -1) {
-        _currentQueryPlayer.ipAddr = txt.substring(_playerIpQueryStr.length);
-      }
-      else {
-        _currentQueryPlayer.ipAddr = txt.substring(_playerIpQueryStr.length, pos);
-      }
-      _serverSocket.write("$_playerWifiQueryStr?\n");
-    }
-    else if (txt.startsWith(_playerWifiQueryStr)) {
-      _currentQueryPlayer.wifiSignalStrength = txt.substring(_playerWifiQueryStr.length);
-      _serverSocket.write("$_playerPowerQueryStr?\n");
-    }
-    else if (txt.startsWith(_playerPowerQueryStr)) {
-      txt = txt.substring(_playerPowerQueryStr.length);
-      _currentQueryPlayer.powerState = int.parse(txt);
-      _serverQueryNextPlayer();
-    }
-    else {
-      _logActivity("[unhandled server response] $txt");
-    }
-  }
-
-  String _unescapeText(String txt) {
-      txt = txt.replaceAll("%3A", ":");
-      txt = txt.replaceAll("%3F", "?");
-      txt = txt.replaceAll("%20", " ");
-      return txt;
-  }
-
-  void _serverQueryNextPlayer() {
-    if (_currentQueryPlayer.deviceName.isNotEmpty) {
-      _playerInfo.add(_currentQueryPlayer);
-      _currentQueryPlayer = PlayerInfo();
-    }
-
-    if (_queryPlayerIdx < _playerCount) {
-      _playerModelQueryStr = "player model $_queryPlayerIdx ";
-      _playerNameQueryStr = "player name $_queryPlayerIdx ";
-      _playerIpQueryStr = "player ip $_queryPlayerIdx ";
-      _playerIdQueryStr = "player id $_queryPlayerIdx ";
-      if (_queryPlayerIdx == 0) {
-        _logActivity("player ${_queryPlayerIdx+1}");
-      }
-      else {
-        _logActivity(", ${_queryPlayerIdx+1}", false);
-      }
-      _serverSocket.write("$_playerIdQueryStr?\n");
-      _queryPlayerIdx++;
-    }
-    else {
-      _serverSocket.write("exit\n");
-      _serverConnectionIsOpen = false;
-      _serverSocket.close();
-      _logActivity("server connection closed");
-      String prevLogTxt = _logTxt;
-      Future.delayed(Duration(seconds: 4), () { 
-        if (prevLogTxt == _logTxt) {
-          _clearLog();
-        }
-      });
-      setState(() {});
-    }
-  }
-
-  void _rebootPlayer() async {
-    if (_playerConnectionIsOpen) {
-      _logActivity("request to reboot ${_selectedPlayer.deviceName} declined due to open connection");
-      return;
-    }
-
-    _logTxt = "Activity:"; // reset _logTxt when button is pressed
-    _logActivity("attempting to reboot ${_selectedPlayer.deviceName}");
-    InternetAddress addr;
-    try {
-      addr = InternetAddress(_selectedPlayer.ipAddr);
-    }
-    catch(e) {
-      _logActivity("$e");
-      return;
-    }
-
-    Duration timeoutVal = const Duration(seconds:10);
-    Socket.connect(addr, 23, timeout:timeoutVal).then((Socket sock) {
-      _playerSocket = sock;
-      _logActivity("connected to ${_playerSocket.remoteAddress.address}:${_playerSocket.remotePort}");
-      _playerConnectionIsOpen = true;
-      _playerSocket.listen(_playerDataHandler, 
-        onError: _playerSocketErrorHandler, 
-        onDone: _playerSocketDoneHandler, 
-        cancelOnError: true);
-    }).catchError((e) {
-      _logActivity("Unable to connect to player, error caught: $e");
-    });
-  }
-
-  void _playerDataHandler(Uint8List data) {
-    if (!_playerConnectionIsOpen) {
-      return;
-    }
-
-    Uint8List telnetNegotiation = Uint8List.fromList([255, 253, 1, 255, 253, 31, 255, 251, 1, 255, 251, 3]);
-    var txt = String.fromCharCodes(data).trim();
-    if (data.length == telnetNegotiation.length && txt == String.fromCharCodes(telnetNegotiation)) {
-      // telnet negotiation settings in initial response, 
-      // sometimes with login prompt, sometimes alone
-      _logActivity("player sent telnet negotiation");
-    }
-    else if (txt.endsWith("SqueezeboxTouch login:")) {
-      if (txt.length > 25) {
-        txt = txt.substring(15);
-        _logActivity("[player responded (with telnet negotiation)] $txt");
-      } 
-      else {
-        _logActivity("[player responded] $txt");
-      }
-      _playerSocket.write("${appPrefs.playerTelnetUserName}\n");
-    }
-    else if (txt.endsWith("Password:")) {
-      _logActivity("[player responded] $txt");
-      _playerSocket.write("${appPrefs.playerTelnetPassword}\n");
-    }
-    else if (txt.contains("Enjoy!")) {
-      _logActivity("logged in, sending reboot command");
-      _playerSocket.write("reboot\n");
-      // socket.write("exit\n"); // for debugging
-      sleep(const Duration(milliseconds: 500)); // reboot fails if socket is closed too quickly
-      _playerConnectionIsOpen = false;
-      _logActivity("closing player connection");
-      _playerSocket.close();
-    }
-    else if (
-      txt == appPrefs.playerTelnetUserName || 
-      txt == "") {
-      // don't log anything
-    }
-    else {
-      _logActivity("[unhandled player response] $txt");
-    }
-  }
-
-  // server player control strings
-  String _playerPowerOffCommandStr = "";
-  String _playerPowerOnCommandStr = "";
-  String _playerPlayCommandStr = "";
-  String _playerStopCommandStr = "";
-
-  void _serverPlayerControlDataHandler(Uint8List data) {
-    if (!_serverConnectionIsOpen) {
-      return;
-    }
-
-    var txt = String.fromCharCodes(data).trim();
-    txt = _unescapeText(txt);
-    if (txt.startsWith(_playerPowerOnCommandStr)) {
-      _logActivity("[server response] $txt");
-      _serverSocket.write("$_playerStopCommandStr\n");
-    }
-    else if (txt.startsWith(_playerStopCommandStr)) {
-      _logActivity("[server response] $txt");
-      _serverSocket.write("$_playerPlayCommandStr\n");
-    }
-    else if (txt.startsWith(_playerPowerOffCommandStr) || txt.startsWith(_playerPlayCommandStr)) {
-      _logActivity("[server response] $txt");
-      _serverConnectionIsOpen = false;
-      _serverSocket.write("exit\n");
-      _serverSocket.close();
-      _logActivity("server connection closed, pausing before refresh");
-      Future.delayed(Duration(seconds: 2), () { 
-        _serverQuery();
-      });
-    }
-    else {
-      _logActivity("[unhandled server response] $txt");
-      _serverSocket.close();
-      _serverSocketDoneHandler();
-    }
-  }
-
-  void _togglePlayerPower() async {
-    if (_selectedPlayer.powerState == 1) {
-      _powerOnOrOffPlayer(false);
-    }
-    else if (_selectedPlayer.powerState == 0) {
-      _powerOnOrOffPlayer(true);
-    }
-  }
-
-  void _powerOnOrOffPlayer(bool powerOn) async {
-    final String onOrOff = powerOn ? "on" : "off";
-    if (_serverConnectionIsOpen) {
-      _logActivity("request to power $onOrOff ${_selectedPlayer.deviceName} declined due to open connection");
-      return;
-    }
-
-    _logTxt = "Activity:"; // reset _logTxt when button is pressed
-    _logActivity("attempting to power $onOrOff ${_selectedPlayer.deviceName}");
-    InternetAddress addr;
-    try {
-      addr = InternetAddress(appPrefs.serverIpAddr);
-    }
-    catch(e) {
-      _logActivity("$e");
-      return;
-    }
-
-    Duration timeoutVal = const Duration(seconds:10);
-    Socket.connect(addr, appPrefs.serverIpAddrPort, timeout:timeoutVal).then((Socket sock) {
-      _serverSocket = sock;
-      _logActivity("connected to LMS");
-      _serverConnectionIsOpen = true;
-      _serverSocket.listen(_serverPlayerControlDataHandler, 
-        onError: _serverSocketErrorHandler, 
-        onDone: _serverSocketDoneHandler, 
-        cancelOnError: true);
-      _updatePlayerControlStrings();
-      final String commandStr = powerOn ? _playerPowerOnCommandStr : _playerPowerOffCommandStr;
-      _serverSocket.write("$commandStr\n");
-    }).catchError((e) {
-      _logActivity("Unable to connect to LMS, error caught: $e");
-      setState(() {});
-    });
-  }
-
-  void _updatePlayerControlStrings() {
-    _playerPlayCommandStr = "${_selectedPlayer.playerId} button play";
-    _playerStopCommandStr = "${_selectedPlayer.playerId} button stop";
-    _playerPowerOnCommandStr = "${_selectedPlayer.playerId} power 1";
-    _playerPowerOffCommandStr = "${_selectedPlayer.playerId} power 0";
-  }
-
-  void _serverSocketErrorHandler(Object error, StackTrace trace) {
-    _logActivity("[error] $error");
-    _serverSocket.close();
-    _serverSocketDoneHandler();
-  }
-
-  void _serverSocketDoneHandler() {
-    _serverConnectionIsOpen = false;
-    _serverSocket.destroy();
-  }
-
-  void _playerSocketErrorHandler(Object error, StackTrace trace) {
-    _logActivity("[error] $error");
-    _playerSocket.close();
-    _playerSocketDoneHandler();
-  }
-
-  void _playerSocketDoneHandler() {
-    _playerConnectionIsOpen = false;
-    _playerSocket.destroy();
-  }
-
-  void _logActivity(String text, [bool ln = true]) {
-    if (ln) {
-      _logTxt += "\n$text";
-    }
-    else {
-      _logTxt += text;
-    }
-    _logViewController.text = _logTxt;
-  }
-
-  void _clearLog() {
-    _logViewController.text = _logTxt = "";
+  Future<void> beginPlayerQuery() async {
+    server.beginPlayerQuery();
   }
 }
