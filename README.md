@@ -6,7 +6,7 @@ It displays a list of all players connected to your server with wifi signal stre
 
 One button power toggle for each player.  Power on also issues a restart of the currently queued song, regardless of player power on setting defined on the server for the player (because if I'm using the app, I want to hear the music, but I have the default server setting to remain stopped on power up since the players don't know the difference between being manually powered on and being powered up after a power outage in the middle of the night).
 
-It has no music content/library searching/queuing/playlist/management -- [Squeezer](https://kaaholst.github.io/android-squeezer/) is the app for that.
+It has no music content/library searching/queuing/playlist/management -- [Squeezer](https://kaaholst.github.io/android-squeezer/) is the app for that -- though it does display song info for players that are in play mode.
 
 Squeezebox Touch players can be rebooted if they have telnet service enabled.  Community firmware released in 2024 disables telnet by default, replaced with SSH.  To restore telnet:
 - SSH into the device with username `root` and password `1234`

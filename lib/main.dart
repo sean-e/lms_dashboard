@@ -185,57 +185,64 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
 
             // add row for each player 
             for (LmsPlayer currentPlayer in players)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded (
-                    flex: 13,
-                    child:
-                      Text(
-                        currentPlayer.deviceName,
-                        textAlign: TextAlign.left,
-                        textScaler: const TextScaler.linear(1.1),
-                        overflow: TextOverflow.fade,
-                      ),
-                  ),
-                  if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
-                    const SizedBox(),
-                  if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
-                   Text(
-                    "${currentPlayer.wifiSignalStrength}%",
-                  ),
-                  const Expanded(
-                    child:
-                    SizedBox(),
-                  ),
-                  OutlinedButton(
-                    onPressed: rebooter.isConnectionOpen() || currentPlayer.supportsTelnet == false ? null : () {
-                      rebooter.reboot(currentPlayer);
-                    },
-                    child: 
-                    const Text(
-                      "Reboot",
+              Column(children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded (
+                      flex: 13,
+                      child:
+                        Text(
+                          currentPlayer.deviceName,
+                          textAlign: TextAlign.left,
+                          textScaler: const TextScaler.linear(1.1),
+                          overflow: TextOverflow.fade,
+                        ),
                     ),
-                  ),
-                  const SizedBox(width:10),
-                  OutlinedButton(
-                    onPressed: playerControl.isConnectionOpen() || (currentPlayer.powerState != 0 && currentPlayer.powerState != 1) ? null : () {
-                      playerControl.togglePlayerPower(currentPlayer);
-                      currentPlayer.powerState = -1;
-                      update(); // just to update text on the button because power state has changed...
-                    },
-                    child: 
+                    if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
+                      const SizedBox(),
+                    if (currentPlayer.wifiSignalStrength.isNotEmpty && currentPlayer.wifiSignalStrength != "0")
                     Text(
-                      switch (currentPlayer.powerState) {
-                        // spaces added just to reduce spacing shift when text changes
-                        0 => "Off",
-                        1 => "On ",
-                        _ => "...  ",
-                      }
+                      "${currentPlayer.wifiSignalStrength}%",
                     ),
-                  ),
-                ]
-              ),
+                    const Expanded(
+                      child:
+                      SizedBox(),
+                    ),
+                    OutlinedButton(
+                      onPressed: rebooter.isConnectionOpen() || currentPlayer.supportsTelnet == false ? null : () {
+                        rebooter.reboot(currentPlayer);
+                      },
+                      child: 
+                      const Text(
+                        "Reboot",
+                      ),
+                    ),
+                    const SizedBox(width:10),
+                    OutlinedButton(
+                      onPressed: playerControl.isConnectionOpen() || (currentPlayer.powerState != 0 && currentPlayer.powerState != 1) ? null : () {
+                        playerControl.togglePlayerPower(currentPlayer);
+                        currentPlayer.powerState = -1;
+                        update(); // just to update text on the button because power state has changed...
+                      },
+                      child: 
+                      Text(
+                        switch (currentPlayer.powerState) {
+                          // spaces added just to reduce spacing shift when text changes
+                          0 => "Off",
+                          1 => "On ",
+                          _ => "...  ",
+                        }
+                      ),
+                    ),
+                ],),
+                if (currentPlayer.powerState == 1 && currentPlayer.currentMode == "play")
+                  Row(
+                    children: [
+                      const SizedBox(width: 20),
+                      Text(currentPlayer.getNowPlaying()),
+                  ],),
+              ],),
               TextField(
                 controller: logger.getController(),
                 readOnly: true, 

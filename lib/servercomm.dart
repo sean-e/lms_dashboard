@@ -85,7 +85,7 @@ class ServerPlayerQuery extends _ServerCommBase {
     }
 
     var txt = String.fromCharCodes(data).trim();
-    txt = _unescapeText(txt);
+    txt = Uri.decodeFull(txt);
     if (txt.startsWith(_playerCountQueryStr)) {
       _playerCount = int.parse(txt.substring(_playerCountQueryStr.length));
       _queryPlayerIdx = 0;
@@ -99,11 +99,11 @@ class ServerPlayerQuery extends _ServerCommBase {
       int connected = int.parse(txt.substring(_currentQueryPlayer.getConnectedQueryStr().length));
       if (connected == 1) {
         _serverSocket.write("$_playerModelQueryStr?\n");
+        return;
       }
-      else {
-        // don't display disconnected players
-        _serverQueryNextPlayer();
-      }
+
+      // don't display disconnected players
+      _serverQueryNextPlayer();
     }
     else if (txt.startsWith(_playerModelQueryStr)) {
       if (txt.contains(" fab4")) {
@@ -135,6 +135,58 @@ class ServerPlayerQuery extends _ServerCommBase {
     else if (txt.startsWith(_currentQueryPlayer.getPowerQueryStr())) {
       txt = txt.substring(_currentQueryPlayer.getPowerQueryStr().length);
       _currentQueryPlayer.powerState = int.parse(txt);
+      if (_currentQueryPlayer.powerState == 1) {
+        _serverSocket.write("${_currentQueryPlayer.getModeQueryStr()}?\n");
+        return;
+      }
+
+      _serverQueryNextPlayer();
+    }
+    else if (txt.startsWith(_currentQueryPlayer.getModeQueryStr())) {
+      _currentQueryPlayer.currentMode = txt.substring(_currentQueryPlayer.getModeQueryStr().length);
+      if (_currentQueryPlayer.currentMode == "play") {
+        _serverSocket.write("${_currentQueryPlayer.getSongQueryStr()}?\n");
+        return;
+      }
+
+      _serverQueryNextPlayer();
+    }
+    else if (txt.startsWith(_currentQueryPlayer.getSongQueryStr())) {
+      _currentQueryPlayer.currentSong = txt.substring(_currentQueryPlayer.getSongQueryStr().length);
+      _serverSocket.write("${_currentQueryPlayer.getArtistQueryStr()}?\n");
+    }
+    else if (txt.startsWith(_currentQueryPlayer.getArtistQueryStr())) {
+      _currentQueryPlayer.currentArtist = txt.substring(_currentQueryPlayer.getArtistQueryStr().length);
+      _serverSocket.write("${_currentQueryPlayer.getAlbumQueryStr()}?\n");
+    }
+    else if (txt.startsWith(_currentQueryPlayer.getAlbumQueryStr())) {
+      _currentQueryPlayer.currentAlbum = txt.substring(_currentQueryPlayer.getAlbumQueryStr().length);
+      _serverSocket.write("${_currentQueryPlayer.getSongPathQueryStr()}?\n");
+    }
+    else if (txt.startsWith(_currentQueryPlayer.getSongPathQueryStr())) {
+      int pos = txt.indexOf(" path file");
+      if (-1 != pos) {
+        _currentQueryPlayer.currentSongPath = txt.substring(pos + 6);
+        String qryTxt = _currentQueryPlayer.getSongYearQueryStr();
+        if (qryTxt.isNotEmpty) {
+          _serverSocket.write("$qryTxt?\n");
+          return;
+        }
+      }
+      
+      _serverQueryNextPlayer();
+    }
+    else if (_currentQueryPlayer.getSongYearQueryStr().length > 25 &&
+              0 == txt.indexOf(Uri.decodeFull(_currentQueryPlayer.getSongYearQueryStr()))) {
+      int pos = txt.indexOf(" year:");
+      if (-1 != pos) {
+        String txt2 = txt.substring(pos + 6);
+        pos = txt2.indexOf(" ");
+        if (pos > 0) {
+          _currentQueryPlayer.currentYear = txt2.substring(0, pos);
+        }
+      }
+
       _serverQueryNextPlayer();
     }
     else {
@@ -239,7 +291,7 @@ class ServerPlayerControl extends _ServerCommBase {
     }
 
     var txt = String.fromCharCodes(data).trim();
-    txt = _unescapeText(txt);
+    txt = Uri.decodeFull(txt);
     if (txt.startsWith(_selectedPlayer.getPowerOnCommandStr())) {
       logger.logActivity("[server response] $txt");
       _serverSocket.write("${_selectedPlayer.getStopCommandStr()}\n");
@@ -264,11 +316,4 @@ class ServerPlayerControl extends _ServerCommBase {
       _serverSocketDoneHandler();
     }
   }
-}
-
-String _unescapeText(String txt) {
-    txt = txt.replaceAll("%3A", ":");
-    txt = txt.replaceAll("%3F", "?");
-    txt = txt.replaceAll("%20", " ");
-    return txt;
 }
