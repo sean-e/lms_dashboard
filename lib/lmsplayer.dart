@@ -23,4 +23,17 @@ class LmsPlayer {
   String getStopCommandStr() {
     return "$playerId button stop";
   }
+
+  // Query strings include trailing space to fix returned text matching
+  String getConnectedQueryStr() {
+    return "$playerId connected ";
+  }
+
+  String getWifiQueryStr() {
+    return "$playerId signalstrength ";
+  }
+
+  String getPowerQueryStr() {
+    return "$playerId power ";
+  }
 }

@@ -31,17 +31,15 @@ class _ServerCommBase {
 }
 
 class ServerPlayerQuery extends _ServerCommBase {
+  LmsPlayer _currentQueryPlayer = LmsPlayer();
   int _playerCount = 0;
   int _queryPlayerIdx = -1;
   final String _playerCountQueryStr = "player count ";
-  String _playerConnectedQueryStr = "";
+  // these query strings are based on player server index rather than player id
   String _playerModelQueryStr = "";
   String _playerNameQueryStr = "";
   String _playerIpQueryStr = "";
   String _playerIdQueryStr = "";
-  String _playerWifiQueryStr = "";
-  String _playerPowerQueryStr = "";
-  LmsPlayer _currentQueryPlayer = LmsPlayer();
 
   Future<void> beginPlayerQuery() async {
     if (_serverConnectionIsOpen) {
@@ -95,15 +93,10 @@ class ServerPlayerQuery extends _ServerCommBase {
     }
     else if (txt.startsWith(_playerIdQueryStr)) {
       _currentQueryPlayer.playerId = txt.substring(_playerIdQueryStr.length);
-
-      _playerConnectedQueryStr = "${_currentQueryPlayer.playerId} connected ";
-      _playerWifiQueryStr = "${_currentQueryPlayer.playerId} signalstrength ";
-      _playerPowerQueryStr = "${_currentQueryPlayer.playerId} power ";
-
-      _serverSocket.write("$_playerConnectedQueryStr?\n");
+      _serverSocket.write("${_currentQueryPlayer.getConnectedQueryStr()}?\n");
     }
-    else if (txt.startsWith(_playerConnectedQueryStr)) {
-      int connected = int.parse(txt.substring(_playerConnectedQueryStr.length));
+    else if (txt.startsWith(_currentQueryPlayer.getConnectedQueryStr())) {
+      int connected = int.parse(txt.substring(_currentQueryPlayer.getConnectedQueryStr().length));
       if (connected == 1) {
         _serverSocket.write("$_playerModelQueryStr?\n");
       }
@@ -133,19 +126,21 @@ class ServerPlayerQuery extends _ServerCommBase {
       else {
         _currentQueryPlayer.ipAddr = txt.substring(_playerIpQueryStr.length, pos);
       }
-      _serverSocket.write("$_playerWifiQueryStr?\n");
+      _serverSocket.write("${_currentQueryPlayer.getWifiQueryStr()}?\n");
     }
-    else if (txt.startsWith(_playerWifiQueryStr)) {
-      _currentQueryPlayer.wifiSignalStrength = txt.substring(_playerWifiQueryStr.length);
-      _serverSocket.write("$_playerPowerQueryStr?\n");
+    else if (txt.startsWith(_currentQueryPlayer.getWifiQueryStr())) {
+      _currentQueryPlayer.wifiSignalStrength = txt.substring(_currentQueryPlayer.getWifiQueryStr().length);
+      _serverSocket.write("${_currentQueryPlayer.getPowerQueryStr()}?\n");
     }
-    else if (txt.startsWith(_playerPowerQueryStr)) {
-      txt = txt.substring(_playerPowerQueryStr.length);
+    else if (txt.startsWith(_currentQueryPlayer.getPowerQueryStr())) {
+      txt = txt.substring(_currentQueryPlayer.getPowerQueryStr().length);
       _currentQueryPlayer.powerState = int.parse(txt);
       _serverQueryNextPlayer();
     }
     else {
       logger.logActivity("[unhandled server response] $txt");
+      _serverSocket.close();
+      _serverSocketDoneHandler();
     }
   }
 
