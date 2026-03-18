@@ -88,6 +88,7 @@ class _DashboardHomePageState extends State<DashboardHomePage> {
 
   @override
   void dispose() {
+    appPrefs.close();
     // Clean up the controller when the widget is disposed.
     _ipAddrController.dispose();
     _ipAddrPortController.dispose();
