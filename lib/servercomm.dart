@@ -163,6 +163,10 @@ class ServerPlayerQuery extends _ServerCommBase {
       _currentQueryPlayer.currentAlbum = txt.substring(_currentQueryPlayer.getAlbumQueryStr().length);
       _serverSocket.write("${_currentQueryPlayer.getSongPathQueryStr()}?\n");
     }
+    else if (_currentQueryPlayer.getAlbumQueryStr().startsWith(txt)) {
+      // radio stream does not support album, songPath, year
+      _serverQueryNextPlayer();
+    }
     else if (txt.startsWith(_currentQueryPlayer.getSongPathQueryStr())) {
       int pos = txt.indexOf(" path file");
       if (-1 != pos) {
@@ -193,6 +197,8 @@ class ServerPlayerQuery extends _ServerCommBase {
       logger.logActivity("[unhandled server response] $txt");
       _serverSocket.close();
       _serverSocketDoneHandler();
+      logger.logActivity("server connection closed");
+      _updateUi();
     }
   }
 
@@ -314,6 +320,7 @@ class ServerPlayerControl extends _ServerCommBase {
       logger.logActivity("[unhandled server response] $txt");
       _serverSocket.close();
       _serverSocketDoneHandler();
+      logger.logActivity("server connection closed");
     }
   }
 }

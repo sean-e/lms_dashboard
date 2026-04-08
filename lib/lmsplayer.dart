@@ -73,14 +73,23 @@ class LmsPlayer {
   }
 
   String getNowPlaying() {
-    if (currentMode == "play") {
-      if (currentYear.isEmpty) {
-        return "$currentSong\n$currentArtist\n$currentAlbum";
-      }
-
-      return "$currentSong\n$currentArtist\n$currentAlbum ($currentYear)";
+    if (currentMode != "play") {
+      return "";
     }
 
-    return "";
+    if (currentArtist.isEmpty) {
+      return currentSong;
+    }
+
+    if (currentAlbum.isEmpty) {
+      // radio streams don't have albums
+      return "$currentSong\n$currentArtist";
+    }
+
+    if (currentYear.isEmpty) {
+      return "$currentSong\n$currentArtist\n$currentAlbum";
+    }
+
+    return "$currentSong\n$currentArtist\n$currentAlbum ($currentYear)";
   }
 }
